@@ -19,17 +19,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run HTML Validation Test
-        run: |
-          mkdir -p logs
-          npm test > logs/test.log 2>&1
-      
-      # CREATE LOGS IF TEST FAILS
+        run: npm test > error-logs.txt 2>&1
+
       - name: Upload Error Logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: deployment-error-report
-          path: ./logs/*.log
+          name: PR-Error-Logs
+          path: error-logs.txt
+          retention-days: 7
 
   # STEP 2: DEPLOY (Only if tests pass)
   deploy_site:
