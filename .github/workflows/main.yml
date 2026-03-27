@@ -1,0 +1,55 @@
+name: CI/CD with Testing
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # JOB 1: RUN TESTS
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install
+      - name: Run Tests
+        id: run-tests
+        run: npm test  # If this fails, the job stops here
+      
+      # JOB 1.5: CREATE ERROR LOGS (Only runs if tests fail)
+      - name: Upload Error Logs
+        if: failure()  # This special condition makes it run only on fail
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-error-logs
+          path: ./logs/*.log # Adjust this path to where your test tool saves logs
+
+  # JOB 2: DEPLOY (Only runs if JOB 1 is successful)
+  deploy:
+    needs: test # This is the "Safety Switch"
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Build Site
+        run: npm run build
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
