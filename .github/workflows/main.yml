@@ -32,6 +32,7 @@ jobs:
   # STEP 2: DEPLOY (Only if tests pass)
   deploy_site:
     needs: test_site
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
