@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Memory Match | Classic Card Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none; /* prevent accidental text selection while clicking */
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      padding: 1rem;
+    }
+
+    /* game container */
+    .game-container {
+      background: rgba(255, 248, 225, 0.9);
+      border-radius: 3rem;
+      padding: 1.5rem;
+      box-shadow: 0 25px 40px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(1px);
+      transition: all 0.2s;
+    }
+
+    /* header with stats */
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      background: #2e241f;
+      padding: 0.8rem 1.5rem;
+      border-radius: 60px;
+      color: #f9e7c2;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.4), 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .stats {
+      display: flex;
+      gap: 1.8rem;
+      font-weight: bold;
+    }
+
+    .stat-box {
+      background: #1f1712;
+      padding: 0.3rem 1rem;
+      border-radius: 2rem;
+      text-align: center;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: #e7cfa1;
+    }
+
+    .stat-value {
+      font-size: 1.7rem;
+      font-weight: 800;
+      line-height: 1;
+      color: #ffdd99;
+    }
+
+    .title {
+      font-size: 1.7rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #FFE6B0, #D4A373);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      text-shadow: 0 2px 3px rgba(0,0,0,0.2);
+    }
+
+    /* New Game Button */
+    .new-game-btn {
+      background: #d9a13b;
+      border: none;
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 0.4rem 1.2rem;
+      border-radius: 3rem;
+      color: #2c1c12;
+      cursor: pointer;
+      transition: 0.15s;
+      box-shadow: 0 4px 0 #6b3f1c;
+      font-family: inherit;
+    }
+
+    .new-game-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #6b3f1c;
+    }
+
+    /* message area */
+    .message-area {
+      text-align: center;
+      margin: 1rem 0 1.2rem 0;
+      font-weight: bold;
+      font-size: 1.2rem;
+      color: #2c2b26;
+      background: #f4e3c6;
+      padding: 0.5rem;
+      border-radius: 40px;
+      transition: 0.2s;
+    }
+
+    /* responsive grid for cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(70px, 100px));
+      gap: 0.9rem;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    /* card styling */
+    .card {
+      aspect-ratio: 3 / 4;
+      background: radial-gradient(circle at 30% 25%, #fff2cf, #f7e5c2);
+      border-radius: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.7rem;
+      font-weight: bold;
+      box-shadow: 0 12px 18px -6px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s ease;
+      transform-style: preserve-3d;
+      position: relative;
+      border: 2px solid #f3cf7a;
+    }
+
+    /* card inner for flip effect? simpler: use data-state, but we show content based on class */
+    /* by default, card has "hidden" face: show back pattern, no symbol */
+    .card.matched {
+      background: linear-gradient(145deg, #95b87e, #6f9e4f);
+      border-color: #e9ffbc;
+      cursor: default;
+      opacity: 0.7;
+      transform: scale(0.97);
+      box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+    }
+
+    .card.matched .card-symbol {
+      filter: drop-shadow(0 0 2px gold);
+    }
+
+    /* standard card - either flipped or hidden */
+    .card.flipped {
+      background: #fff5e8;
+      border: 3px solid #ffcd94;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* symbol styling */
+    .card-symbol {
+      display: block;
+      text-align: center;
+      transition: 0.1s;
+    }
+
+    /* hidden state: show question mark / pattern, no actual icon */
+    .card:not(.flipped):not(.matched) .card-symbol {
+      content: "?";
+      font-size: 2.8rem;
+      font-weight: bold;
+      color: #b97f44;
+      text-shadow: 2px 2px 0 #eedd99;
+    }
+
+    .card:not(.flipped):not(.matched) .card-symbol::before {
+      content: "?";
+    }
+
+    /* we manage symbol content via data attribute or inner text. We'll use JS to fill span, but default show "?" */
+    /* Override: for hidden cards, we enforce "?" regardless of inner text */
+    .card:not(.flipped):not(.matched) .card-symbol {
+      font-size: 3rem;
+    }
+
+    .card:not(.flipped):not(.matched) .card-symbol::before {
+      content: "?";
+    }
+    
+    .card:not(.flipped):not(.matched) .card-symbol span {
+      display: none;
+    }
+    
+    /* for flipped or matched, show actual span content */
+    .card.flipped .card-symbol span,
+    .card.matched .card-symbol span {
+      display: inline;
+    }
+    
+    .card.flipped .card-symbol::before,
+    .card.matched .card-symbol::before {
+      content: none;
+    }
+
+    /* keep nice hover for not matched & not flipped */
+    .card:not(.flipped):not(.matched):hover {
+      transform: translateY(-5px);
+      background: #ffe8c7;
+      border-color: #ffbc6e;
+    }
+
+    /* disable pointer events on matched cards */
+    .card.matched {
+      pointer-events: none;
+    }
+
+    /* responsive design */
+    @media (max-width: 550px) {
+      .cards-grid {
+        grid-template-columns: repeat(4, minmax(65px, 85px));
+        gap: 0.6rem;
+      }
+      .stat-value {
+        font-size: 1.3rem;
+      }
+      .title {
+        font-size: 1.2rem;
+      }
+      .game-header {
+        padding: 0.5rem 1rem;
+      }
+      .card-symbol {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .cards-grid {
+        gap: 0.5rem;
+        grid-template-columns: repeat(4, minmax(60px, 75px));
+      }
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.7rem;
+      color: #2f2a24;
+    }
+  </style>
+</head>
+<body>
+<div class="game-container">
+  <div class="game-header">
+    <div class="title">🧠 MEMORY FOREST 🍃</div>
+    <div class="stats">
+      <div class="stat-box"><div class="stat-label">MOVES</div><div class="stat-value" id="movesCount">0</div></div>
+      <div class="stat-box"><div class="stat-label">PAIRS</div><div class="stat-value" id="pairsMatched">0</div></div>
+    </div>
+    <button class="new-game-btn" id="newGameBtn">🔄 New Game</button>
+  </div>
+  <div class="message-area" id="gameMessage">
+    ✨ Match the cards! Click any card ✨
+  </div>
+  <div class="cards-grid" id="cardsGrid"></div>
+  <footer>✔ Match all 8 pairs | Flip two cards at a time</footer>
+</div>
+
+<script>
+  // ------------------- GAME DATA -------------------
+  // Icon set: 8 unique pairs (16 cards). Use friendly emojis / symbols.
+  const ICON_SET = [
+    "🐻‍❄️", "🐧", "🦊", "🐱", "🐶", "🐭", "🐰", "🦝"
+  ];
+  
+  // total cards = 16 (8 pairs)
+  const TOTAL_PAIRS = ICON_SET.length;  // 8
+  const TOTAL_CARDS = TOTAL_PAIRS * 2;   // 16
+
+  // Game state
+  let cardsData = [];         // { id, icon, matched, flipped, cardElement, pairId }
+  let cardElements = [];
+  let moves = 0;
+  let matchedPairs = 0;
+  let lockBoard = false;      // prevent actions during animation / delay
+  let firstCardIndex = null;
+  let secondCardIndex = null;
+  let timeoutId = null;       // handle pending flip reset
+
+  // DOM references
+  const movesSpan = document.getElementById('movesCount');
+  const pairsSpan = document.getElementById('pairsMatched');
+  const gameMessageDiv = document.getElementById('gameMessage');
+  const gridContainer = document.getElementById('cardsGrid');
+  const newGameBtn = document.getElementById('newGameBtn');
+
+  // Helper: shuffle array (Fisher-Yates)
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // Build fresh card data (shuffled)
+  function buildShuffledCards() {
+    // create pairs: each icon appears twice
+    let deck = [];
+    for (let i = 0; i < TOTAL_PAIRS; i++) {
+      const icon = ICON_SET[i];
+      deck.push({ pairId: i, icon: icon, matched: false, flipped: false, uniqueId: Math.random() });
+      deck.push({ pairId: i, icon: icon, matched: false, flipped: false, uniqueId: Math.random() });
+    }
+    // shuffle deck
+    deck = shuffleArray(deck);
+    // add card index reference
+    return deck.map((card, idx) => ({
+      ...card,
+      index: idx,
+    }));
+  }
+
+  // Update UI stats (moves, matched pairs)
+  function updateStatsUI() {
+    movesSpan.innerText = moves;
+    pairsSpan.innerText = matchedPairs;
+  }
+
+  // Show temporary message
+  function setMessage(msg, isError = false) {
+    gameMessageDiv.innerText = msg;
+    gameMessageDiv.style.background = isError ? "#ffe0cc" : "#f4e3c6";
+    setTimeout(() => {
+      if (gameMessageDiv.innerText === msg) {
+        if (!lockBoard && matchedPairs !== TOTAL_PAIRS) {
+          gameMessageDiv.innerText = "✨ Keep matching! ✨";
+          gameMessageDiv.style.background = "#f4e3c6";
+        } else if (matchedPairs === TOTAL_PAIRS) {
+          // winning message persists but we can keep
+          gameMessageDiv.style.background = "#cbe6b0";
+        }
+      }
+    }, 1500);
+  }
+
+  // Render all cards according to current data state
+  function renderBoard() {
+    for (let i = 0; i < cardsData.length; i++) {
+      const card = cardsData[i];
+      const element = cardElements[i];
+      if (!element) continue;
+      
+      // update classes
+      element.classList.remove('flipped', 'matched');
+      if (card.matched) {
+        element.classList.add('matched');
+      } else if (card.flipped) {
+        element.classList.add('flipped');
+      }
+      
+      // update symbol content inside .card-symbol span
+      const symbolSpan = element.querySelector('.card-symbol span');
+      if (symbolSpan) {
+        symbolSpan.innerText = card.icon;
+      }
+    }
+  }
+
+  // Reset board after game over or new game
+  function resetGame() {
+    // clear any pending timeout to avoid state conflicts
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    // reset global flags
+    lockBoard = false;
+    firstCardIndex = null;
+    secondCardIndex = null;
+    moves = 0;
+    matchedPairs = 0;
+    // build fresh shuffled data
+    cardsData = buildShuffledCards();
+    // reset UI stats
+    updateStatsUI();
+    // recreate grid if needed? we can reuse and update elements content
+    // but cardsData length fixed, so we can just refresh each card's appearance
+    // re-render existing card elements with new data (icons and states)
+    for (let i = 0; i < cardsData.length; i++) {
+      const card = cardsData[i];
+      card.flipped = false;
+      card.matched = false;
+      // update stored element content if exists, else later
+      if (cardElements[i]) {
+        const el = cardElements[i];
+        // reset classes
+        el.classList.remove('flipped', 'matched');
+        // update span content
+        const symbolSpan = el.querySelector('.card-symbol span');
+        if (symbolSpan) symbolSpan.innerText = card.icon;
+        // ensure hidden state (since flipped = false, matched = false)
+      }
+    }
+    renderBoard(); // sync classes
+    setMessage("🃏 New game! Find all pairs. 🃏");
+    // extra: clear any residual highlight
+    gameMessageDiv.style.background = "#f4e3c6";
+  }
+
+  // Check win condition
+  function checkWin() {
+    if (matchedPairs === TOTAL_PAIRS) {
+      setMessage(`🎉 VICTORY! You won in ${moves} moves! 🎉`);
+      gameMessageDiv.style.background = "#c8e6b5";
+      gameMessageDiv.style.fontSize = "1.2rem";
+      lockBoard = true; // disable further moves when game finished
+      return true;
+    }
+    return false;
+  }
+
+  // Handle match between two cards
+  function handleMatch(idxA, idxB) {
+    const cardA = cardsData[idxA];
+    const cardB = cardsData[idxB];
+    if (cardA.pairId === cardB.pairId) {
+      // matched!
+      cardA.matched = true;
+      cardB.matched = true;
+      // ensure they are not flipped anymore (they become matched and stay revealed but disabled)
+      cardA.flipped = false;   // matched state overrides flipped
+      cardB.flipped = false;
+      matchedPairs++;
+      updateStatsUI();
+      renderBoard();   // update visuals to matched style
+      setMessage("✔️ Great match! ✔️");
+      
+      // clear pending selected indices
+      firstCardIndex = null;
+      secondCardIndex = null;
+      
+      // after match, check win
+      const isWin = checkWin();
+      if (isWin) {
+        // game finished, lockBoard already true inside checkWin
+        lockBoard = true;
+      } else {
+        // unlock board for next move
+        lockBoard = false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  // Mismatch: reset both cards after short delay
+  function mismatchReset(idxA, idxB) {
+    // flip them back (flipped -> false)
+    cardsData[idxA].flipped = false;
+    cardsData[idxB].flipped = false;
+    renderBoard();
+    // reset selection variables
+    firstCardIndex = null;
+    secondCardIndex = null;
+    lockBoard = false;   // unlock after reset
+    if (timeoutId) timeoutId = null;
+  }
+
+  // Main card click handler
+  function onCardClick(clickedIndex) {
+    // if board locked or game finished (matchedPairs === total) ignore click
+    if (lockBoard) {
+      // if game is already won, message reminder
+      if (matchedPairs === TOTAL_PAIRS) {
+        setMessage("🏆 You already won! Press New Game 🏆");
+      } else {
+        // just ignore while animating
+      }
+      return;
+    }
+    
+    // check if game already completed (just in case)
+    if (matchedPairs === TOTAL_PAIRS) {
+      setMessage("Game over! Click New Game to play again.");
+      return;
+    }
+    
+    const currentCard = cardsData[clickedIndex];
+    // Prevent clicking on already matched cards OR already flipped card (while waiting for second)
+    if (currentCard.matched) return;
+    // if the same card is clicked twice, do nothing
+    if (firstCardIndex !== null && secondCardIndex === null && firstCardIndex === clickedIndex) return;
+    
+    // If we are waiting for second card and no pending lock, process
+    if (firstCardIndex !== null && secondCardIndex === null) {
+      // this is the second card selection
+      // can't pick already flipped card? already prevented via flipped check, also matched check
+      if (cardsData[clickedIndex].flipped) return;
+      
+      // set second card
+      secondCardIndex = clickedIndex;
+      // flip second card
+      cardsData[secondCardIndex].flipped = true;
+      renderBoard();
+      
+      // increment moves only after two distinct cards are flipped
+      moves++;
+      updateStatsUI();
+      
+      // Check match between first and second
+      const isMatch = handleMatch(firstCardIndex, secondCardIndex);
+      
+      if (isMatch) {
+        // matched: cards already set as matched, indices cleared inside handleMatch
+        // ensure that lockBoard was set to false after match unless win
+        // also need to reset firstCard/secondCard references (handleMatch already set them null)
+        // BUT note: handleMatch already set firstCardIndex = null, secondCardIndex = null
+        // Additionally lockBoard already false (unless win sets true)
+        // No extra timeout.
+        // After match, board is ready for next move
+        if (matchedPairs !== TOTAL_PAIRS) {
+          lockBoard = false;
+        }
+        // clear any stale timeout just in case
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        // firstCardIndex and secondCardIndex already null in handleMatch.
+      } else {
+        // mismatch: lock board, show message, after delay flip them back
+        lockBoard = true;
+        setMessage("❌ Not a match! Try again ❌", false);
+        // schedule reset
+        timeoutId = setTimeout(() => {
+          // Before flipping back, ensure game hasn't been reset in between
+          if (firstCardIndex !== null && secondCardIndex !== null && !cardsData[firstCardIndex]?.matched && !cardsData[secondCardIndex]?.matched) {
+            mismatchReset(firstCardIndex, secondCardIndex);
+          } else {
+            // edge case: maybe some match happened? but unlikely, just clean references
+            if (firstCardIndex !== null && secondCardIndex !== null) {
+              // if by some weird async they are not matched but we need to flip them if not matched
+              if (!cardsData[firstCardIndex].matched && !cardsData[secondCardIndex].matched) {
+                cardsData[firstCardIndex].flipped = false;
+                cardsData[secondCardIndex].flipped = false;
+                renderBoard();
+              }
+            }
+            firstCardIndex = null;
+            secondCardIndex = null;
+            lockBoard = false;
+          }
+          // reset globals
+          firstCardIndex = null;
+          secondCardIndex = null;
+          lockBoard = false;
+          if (timeoutId) timeoutId = null;
+          // re-render after reset
+          renderBoard();
+        }, 850);
+      }
+      // after handling match or mismatch, clear firstCard/secondCard references for next turn except we set inside handleMatch for match case.
+      // For mismatch, we handle inside timeout but we also reset now to avoid double interaction, but we must keep indices until timeout ends.
+      // In mismatch path, we don't reset firstCardIndex and secondCardIndex immediately because timeout needs them.
+      // But we also need to prevent further clicks while mismatch timeout. lockBoard already true.
+      return;
+    }
+    
+    // No card flipped yet (first card selection)
+    if (firstCardIndex === null && secondCardIndex === null) {
+      // flip current card
+      cardsData[clickedIndex].flipped = true;
+      renderBoard();
+      firstCardIndex = clickedIndex;
+      // no moves increment yet, until second card
+      return;
+    }
+  }
+
+  // Dynamically create the grid and attach event listeners
+  function initGameBoard() {
+    gridContainer.innerHTML = '';
+    cardElements = [];
+    // Build fresh data
+    cardsData = buildShuffledCards();
+    moves = 0;
+    matchedPairs = 0;
+    updateStatsUI();
+    lockBoard = false;
+    firstCardIndex = null;
+    secondCardIndex = null;
+    if (timeoutId) clearTimeout(timeoutId);
+    timeoutId = null;
+    
+    for (let i = 0; i < cardsData.length; i++) {
+      const card = cardsData[i];
+      const cardDiv = document.createElement('div');
+      cardDiv.className = 'card';   // base class, hidden initially (not flipped, not matched)
+      // inner structure: span for symbol
+      const innerSpan = document.createElement('div');
+      innerSpan.className = 'card-symbol';
+      const valueSpan = document.createElement('span');
+      valueSpan.innerText = card.icon;
+      innerSpan.appendChild(valueSpan);
+      cardDiv.appendChild(innerSpan);
+      
+      // attach click event with index
+      cardDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = cardDiv.__cardIndex;
+        if (idx !== undefined) onCardClick(idx);
+      });
+      
+      cardDiv.__cardIndex = i;
+      gridContainer.appendChild(cardDiv);
+      cardElements.push(cardDiv);
+      // store reference in cardsData
+      card.element = cardDiv;
+    }
+    // initial render (all hidden)
+    renderBoard();
+    setMessage("🐾 Flip two cards to find matching pairs! 🐾");
+  }
+
+  // New game handler
+  function newGame() {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    lockBoard = false;
+    firstCardIndex = null;
+    secondCardIndex = null;
+    initGameBoard();
+  }
+
+  // attach event to button
+  newGameBtn.addEventListener('click', () => {
+    newGame();
+  });
+  
+  // start game
+  initGameBoard();
+</script>
+</body>
+</html>
