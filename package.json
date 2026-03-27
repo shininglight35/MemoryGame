@@ -1,0 +1,16 @@
+{
+  "name": "elec4",
+  "version": "1.0.0",
+  "description": "",
+  "main": "testsample.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "jest": "^30.3.0"
+  }
+}
