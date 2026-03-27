@@ -13,8 +13,8 @@ test('HTML Syntax: Brackets < > must be balanced', () => {
     const pureHTML = htmlContent
         .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '');
-    const opening = (htmlContent.match(/</g) || []).length;
-    const closing = (htmlContent.match(/>/g) || []).length;
+    const opening = (pureHTML.match(/</g) || []).length;
+    const closing = (pureHTML.match(/>/g) || []).length;
     expect(opening).toBe(closing);
 });
 
