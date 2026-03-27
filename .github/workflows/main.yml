@@ -19,7 +19,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run HTML Validation Test
-        run: npm test
+        run: |
+          mkdir -p logs
+          npm test > logs/test.log 2>&1
       
       # CREATE LOGS IF TEST FAILS
       - name: Upload Error Logs
