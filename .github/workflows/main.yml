@@ -45,7 +45,4 @@ jobs:
         with:
           path: '.' # Uploads your index.html directly from the main folder
       - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4'
-      - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v4
