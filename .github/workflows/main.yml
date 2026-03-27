@@ -11,8 +11,8 @@ permissions:
   id-token: write
 
 jobs:
-  # JOB 1: RUN TESTS
-  test:
+  # STEP 1: TEST
+  test_site:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,37 +21,35 @@ jobs:
         with:
           node-version: '20'
       - name: Install dependencies
-        run: npm install
-      - name: Run Tests
-        id: run-tests
-        run: npm test  # If this fails, the job stops here
+        run: npm ci
+      - name: Run HTML Validation Test
+        run: npm test
       
-      # JOB 1.5: CREATE ERROR LOGS (Only runs if tests fail)
+      # CREATE LOGS IF TEST FAILS
       - name: Upload Error Logs
-        if: failure()  # This special condition makes it run only on fail
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-error-logs
-          path: ./logs/*.log # Adjust this path to where your test tool saves logs
+          name: deployment-error-report
+          path: ./logs/*.log
 
-  # JOB 2: DEPLOY (Only runs if JOB 1 is successful)
-  deploy:
-    needs: test # This is the "Safety Switch"
+  # STEP 2: DEPLOY (Only if tests pass)
+  deploy_site:
+    needs: test_site
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v4
-      - name: Build Site
-        run: npm run build
-      - name: Upload artifact
+      - name: Upload Website Files
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '.' # Uploads your index.html directly from the main folder
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
